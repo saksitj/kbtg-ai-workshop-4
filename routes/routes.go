@@ -21,7 +21,9 @@ func SetupRoutes(app *fiber.App) {
 
 	// Welcome route
 	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Welcome to Workshop 4 API!")
+		return c.JSON(fiber.Map{
+			"message": "hello world",
+		})
 	})
 
 	// User routes
