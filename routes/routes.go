@@ -8,9 +8,6 @@ import (
 
 // SetupRoutes configures all application routes
 func SetupRoutes(app *fiber.App) {
-	// API v1 group
-	api := app.Group("/api/v1")
-
 	// Health check
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
@@ -26,16 +23,14 @@ func SetupRoutes(app *fiber.App) {
 		})
 	})
 
-	// User routes
-	setupUserRoutes(api)
+	// User routes - directly at /users path
+	setupUserRoutes(app)
 }
 
-func setupUserRoutes(router fiber.Router) {
-	users := router.Group("/users")
-
-	users.Get("/", handlers.GetUsers)
-	users.Get("/:id", handlers.GetUser)
-	users.Post("/", handlers.CreateUser)
-	users.Put("/:id", handlers.UpdateUser)
-	users.Delete("/:id", handlers.DeleteUser)
+func setupUserRoutes(app *fiber.App) {
+	app.Get("/users", handlers.GetUsers)
+	app.Get("/users/:id", handlers.GetUser)
+	app.Post("/users", handlers.CreateUser)
+	app.Put("/users/:id", handlers.UpdateUser)
+	app.Delete("/users/:id", handlers.DeleteUser)
 }

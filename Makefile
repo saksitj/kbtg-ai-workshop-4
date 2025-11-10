@@ -45,6 +45,18 @@ test:
 	@echo "🧪 Running tests..."
 	@go test -v ./...
 
+# Run tests with coverage
+test-coverage:
+	@echo "🧪 Running tests with coverage..."
+	@go test -cover ./...
+
+# Run tests with detailed coverage
+test-coverage-html:
+	@echo "🧪 Generating coverage report..."
+	@go test -coverprofile=coverage.out ./...
+	@go tool cover -html=coverage.out -o coverage.html
+	@echo "✅ Coverage report generated: coverage.html"
+
 # Install dependencies
 install:
 	@echo "📦 Installing dependencies..."

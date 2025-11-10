@@ -1,16 +1,30 @@
 package handlers
 
 import (
+	"strconv"
+	"workshop_4/models"
+	"workshop_4/repository"
+
 	"github.com/gofiber/fiber/v2"
 )
 
+var userRepo repository.UserRepositoryInterface
+
+// SetUserRepository sets the user repository
+func SetUserRepository(repo repository.UserRepositoryInterface) {
+	userRepo = repo
+}
+
 // GetUsers returns a list of all users
 func GetUsers(c *fiber.Ctx) error {
-	// TODO: Implement database query
-	users := []fiber.Map{
-		{"id": 1, "name": "John Doe", "email": "john@example.com"},
-		{"id": 2, "name": "Jane Smith", "email": "jane@example.com"},
+	users, err := userRepo.GetAll()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   "Failed to fetch users",
+		})
 	}
+
 	return c.JSON(fiber.Map{
 		"success": true,
 		"data":    users,
@@ -19,27 +33,38 @@ func GetUsers(c *fiber.Ctx) error {
 
 // GetUser returns a single user by ID
 func GetUser(c *fiber.Ctx) error {
-	id := c.Params("id")
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"error":   "Invalid user ID",
+		})
+	}
 
-	// TODO: Implement database query
+	user, err := userRepo.GetByID(id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   "Failed to fetch user",
+		})
+	}
+
+	if user == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"error":   "User not found",
+		})
+	}
+
 	return c.JSON(fiber.Map{
 		"success": true,
-		"data": fiber.Map{
-			"id":    id,
-			"name":  "John Doe",
-			"email": "john@example.com",
-		},
+		"data":    user,
 	})
 }
 
 // CreateUser creates a new user
 func CreateUser(c *fiber.Ctx) error {
-	type CreateUserRequest struct {
-		Name  string `json:"name" validate:"required"`
-		Email string `json:"email" validate:"required,email"`
-	}
-
-	var req CreateUserRequest
+	var req models.CreateUserRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
@@ -47,27 +72,44 @@ func CreateUser(c *fiber.Ctx) error {
 		})
 	}
 
-	// TODO: Implement database insert
+	// Basic validation
+	if req.FirstName == "" || req.LastName == "" || req.Email == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"error":   "First name, last name, and email are required",
+		})
+	}
+
+	// Set default values if not provided
+	if req.MemberLevel == "" {
+		req.MemberLevel = "Bronze"
+	}
+
+	user, err := userRepo.Create(req)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   "Failed to create user",
+		})
+	}
+
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"success": true,
-		"data": fiber.Map{
-			"id":    3,
-			"name":  req.Name,
-			"email": req.Email,
-		},
+		"data":    user,
 	})
 }
 
 // UpdateUser updates an existing user
 func UpdateUser(c *fiber.Ctx) error {
-	id := c.Params("id")
-
-	type UpdateUserRequest struct {
-		Name  string `json:"name"`
-		Email string `json:"email"`
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"error":   "Invalid user ID",
+		})
 	}
 
-	var req UpdateUserRequest
+	var req models.UpdateUserRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
@@ -75,25 +117,72 @@ func UpdateUser(c *fiber.Ctx) error {
 		})
 	}
 
-	// TODO: Implement database update
+	// Check if user exists
+	existingUser, err := userRepo.GetByID(id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   "Failed to fetch user",
+		})
+	}
+
+	if existingUser == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"error":   "User not found",
+		})
+	}
+
+	user, err := userRepo.Update(id, req)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   "Failed to update user",
+		})
+	}
+
 	return c.JSON(fiber.Map{
 		"success": true,
-		"data": fiber.Map{
-			"id":    id,
-			"name":  req.Name,
-			"email": req.Email,
-		},
+		"data":    user,
 	})
 }
 
 // DeleteUser deletes a user by ID
 func DeleteUser(c *fiber.Ctx) error {
-	id := c.Params("id")
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"error":   "Invalid user ID",
+		})
+	}
 
-	// TODO: Implement database delete
+	// Check if user exists
+	existingUser, err := userRepo.GetByID(id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   "Failed to fetch user",
+		})
+	}
+
+	if existingUser == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"error":   "User not found",
+		})
+	}
+
+	err = userRepo.Delete(id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   "Failed to delete user",
+		})
+	}
+
 	return c.JSON(fiber.Map{
 		"success": true,
 		"message": "User deleted successfully",
-		"id":      id,
 	})
 }
